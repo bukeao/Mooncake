@@ -95,6 +95,7 @@ environment setup must be prepared separately.
 | AMD HIP / ROCm | `-DUSE_HIP=ON` | Install ROCm/HIP SDK. | Ensure HIP compiler, headers, and runtime libraries are visible to CMake. |
 | Hygon DCU | `-DUSE_HYGON=ON` | Install DTK SDK. | Set `DTK_HOME`, or pass `-DDTK_ROOT=/path/to/dtk`. Use `-DDTK_INCLUDE_DIR` and `-DDTK_LIB_DIR` for custom layouts. |
 | Iluvatar CoreX | `-DUSE_COREX=ON` | Install CoreX SDK. | Set `COREX_HOME`, or pass `-DCOREX_ROOT=/path/to/corex`. Use `-DCOREX_INCLUDE_DIR` and `-DCOREX_LIB_DIR` for custom layouts. |
+| Intel GPU (XPU) | `-DUSE_XPU=ON` | Install the Level Zero loader and headers (`libze-dev`) and the Intel GPU driver (`libze-intel-gpu1`). | No peer-memory module is needed: RDMA registers device memory through dma-buf, which requires a NIC and kernel with dma-buf MR support. |
 
 ```{admonition} NCCL host RMA constraints
 :class: important
@@ -205,6 +206,7 @@ The following options can be passed to `cmake ..`.
 | `-DUSE_HIP=ON/OFF` | `OFF` | Enable AMD GPU support via HIP/ROCm. |
 | `-DUSE_HYGON=ON/OFF` | `OFF` | Enable Hygon DCU support via DTK SDK. Uses a CUDA-compatible runtime. |
 | `-DUSE_COREX=ON/OFF` | `OFF` | Enable Iluvatar CoreX GPU support. Uses a CUDA-compatible runtime. |
+| `-DUSE_XPU=ON/OFF` | `OFF` | Enable Intel GPU (XPU) memory support via Level Zero, including memory detection, topology discovery, GPU-aware TCP transport, and dma-buf RDMA registration. Device ordinals match `torch.xpu`. |
 | `-DUSE_MLU=ON/OFF` | `OFF` | Enable Cambricon MLU memory support via Neuware, including memory detection, topology discovery, and RDMA registration. |
 | `-DUSE_ASCEND_DIRECT=ON/OFF` | `OFF` | Enable Ascend Direct transport and HCCS support via the ADXL engine. Recommended for Ascend builds. |
 | `-DUSE_UBSHMEM=ON/OFF` | `OFF` | Enable Huawei Ascend NPU shared memory transport via CANN VMM APIs. |

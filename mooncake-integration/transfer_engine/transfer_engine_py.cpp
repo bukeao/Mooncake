@@ -14,6 +14,7 @@
 
 #include "transfer_engine_py.h"
 
+#include <algorithm>
 #include <cassert>
 #include <cstdlib>
 #include <numeric>
@@ -458,6 +459,60 @@ int TransferEnginePy::batchTransferSyncRead(
     return batchTransferSync(target_hostname, buffers, peer_buffer_addresses,
                              lengths, TransferOpcode::READ, nullptr,
                              transport_hint);
+}
+
+int TransferEnginePy::batchTransferSyncWritePages(
+    const char* target_hostname,
+    pybind11::array_t<int64_t, pybind11::array::c_style> src_pages,
+    pybind11::array_t<int64_t, pybind11::array::c_style> dst_pages,
+    pybind11::array_t<int64_t, pybind11::array::c_style> fields,
+    size_t max_batch_size) {
+    if (src_pages.ndim() != 1 || dst_pages.ndim() != 1 ||
+        src_pages.shape(0) != dst_pages.shape(0)) {
+        LOG(ERROR) << "src_pages and dst_pages must be 1-D arrays of the "
+                      "same length";
+        return -1;
+    }
+    if (fields.ndim() != 2 || fields.shape(1) != 5) {
+        LOG(ERROR) << "fields must be an int64 [F, 5] array";
+        return -1;
+    }
+    if (max_batch_size == 0) {
+        LOG(ERROR) << "max_batch_size must be positive";
+        return -1;
+    }
+
+    const size_t num_pages = static_cast<size_t>(src_pages.shape(0));
+    const size_t total = num_pages * static_cast<size_t>(fields.shape(0));
+    const int64_t* src = src_pages.data();
+    const int64_t* dst = dst_pages.data();
+    const int64_t* rows = fields.data();
+
+    std::vector<uintptr_t> buffers;
+    std::vector<uintptr_t> peer_buffer_addresses;
+    std::vector<size_t> lengths;
+    for (size_t start = 0; start < total; start += max_batch_size) {
+        const size_t stop = std::min(total, start + max_batch_size);
+        buffers.clear();
+        peer_buffer_addresses.clear();
+        lengths.clear();
+        for (size_t d = start; d < stop; ++d) {
+            // Field-major: descriptor d is page (d % num_pages) of field
+            // (d / num_pages).
+            const int64_t* row = rows + (d / num_pages) * 5;
+            const size_t i = d % num_pages;
+            buffers.push_back(static_cast<uintptr_t>(row[0] + src[i] * row[1]));
+            peer_buffer_addresses.push_back(
+                static_cast<uintptr_t>(row[2] + dst[i] * row[3]));
+            lengths.push_back(static_cast<size_t>(row[4]));
+        }
+        // batchTransferSync releases the GIL for the transfer itself.
+        const int ret = batchTransferSync(target_hostname, buffers,
+                                          peer_buffer_addresses, lengths,
+                                          TransferOpcode::WRITE, nullptr, "");
+        if (ret != 0) return ret;
+    }
+    return 0;
 }
 
 batch_id_t TransferEnginePy::batchTransferAsyncWrite(
@@ -1262,6 +1317,11 @@ PYBIND11_MODULE(engine, m) {
                  py::arg("target_hostname"), py::arg("buffers"),
                  py::arg("peer_buffer_addresses"), py::arg("lengths"),
                  py::arg("transport_hint") = "")
+            .def("batch_transfer_sync_write_pages",
+                 &TransferEnginePy::batchTransferSyncWritePages,
+                 py::arg("target_hostname"), py::arg("src_pages"),
+                 py::arg("dst_pages"), py::arg("fields"),
+                 py::arg("max_batch_size"))
             .def("batch_transfer_sync_read",
                  &TransferEnginePy::batchTransferSyncRead,
                  py::arg("target_hostname"), py::arg("buffers"),

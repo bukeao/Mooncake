@@ -550,6 +550,26 @@ int RdmaContext::exportDmabuf(void *addr, DmabufExport &out) {
         // allocation base, plus any offset hsa returned for the export.
         out.offset = (uintptr_t)addr - (uintptr_t)allocBase + hsa_dmabuf_offset;
     }
+#elif defined(USE_XPU)
+    // Intel GPUs have no peer-memory module, so device memory always goes
+    // through a Level Zero dma-buf export; everything else is host memory.
+    xpuPointerAttributes attributes;
+    if (xpuPointerGetAttributes(&attributes, addr) != xpuSuccess ||
+        attributes.type != xpuMemoryTypeDevice) {
+        out.method = DmabufExport::Method::kHostReg;
+    } else {
+        int dmabuf_fd = -1;
+        size_t offset = 0;
+        xpuError_t err = xpuExportDmabuf(addr, &dmabuf_fd, &offset);
+        if (err != xpuSuccess) {
+            LOG(ERROR) << "Failed to retrieve dmabuf for " << (uintptr_t)addr
+                       << " xpu error=" << xpuGetErrorString(err);
+            return ERR_CONTEXT;
+        }
+        out.method = DmabufExport::Method::kDmabufReg;
+        out.fd = dmabuf_fd;
+        out.offset = offset;
+    }
 #else
     out.method = DmabufExport::Method::kHostReg;
 #endif
@@ -583,7 +603,7 @@ int RdmaContext::registerMemoryRegionInternal(void *addr, size_t length,
     }
     mrMeta.addr = addr;
 #if defined(USE_MLU) || defined(USE_MACA) || defined(USE_CUDA) || \
-    defined(USE_HIP_DMABUF) || defined(USE_SUPA)
+    defined(USE_HIP_DMABUF) || defined(USE_SUPA) || defined(USE_XPU)
     if (exp.method == DmabufExport::Method::kDmabufReg) {
         // Import the shared dma_buf fd into this NIC's PD. The fd is kept open
         // by the caller until every NIC has registered; this MR takes its own

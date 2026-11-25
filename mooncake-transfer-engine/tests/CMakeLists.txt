@@ -189,6 +189,12 @@ target_link_libraries(dmabuf_export_test PUBLIC transfer_engine gtest
                                                 gtest_main)
 add_test(NAME dmabuf_export_test COMMAND dmabuf_export_test)
 
+if(USE_XPU)
+  add_executable(xpu_test ${WORKSPACE}/xpu_test.cpp)
+  target_link_libraries(xpu_test PUBLIC transfer_engine gtest gtest_main)
+  add_test(NAME xpu_test COMMAND xpu_test)
+endif()
+
 if(USE_MNNVL)
   add_executable(nvlink_transport_test ${WORKSPACE}/nvlink_transport_test.cpp)
   target_link_libraries(nvlink_transport_test PUBLIC transfer_engine gtest

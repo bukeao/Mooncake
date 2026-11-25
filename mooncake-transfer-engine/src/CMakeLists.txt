@@ -13,6 +13,10 @@ if(USE_HIP)
   hipify_files(ENGINE_SOURCES)
 endif()
 
+if(USE_XPU)
+  list(APPEND ENGINE_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/gpu_vendor/xpu.cpp)
+endif()
+
 add_library(transfer_metadata_plugin OBJECT ${TRANSFER_METADATA_PLUGIN_SOURCES})
 set_target_properties(transfer_metadata_plugin
                       PROPERTIES POSITION_INDEPENDENT_CODE ON)
@@ -164,6 +168,10 @@ endif()
 
 if(USE_MLU)
   target_link_libraries(transfer_engine PUBLIC cnrt cndrv)
+endif()
+
+if(USE_XPU)
+  target_link_libraries(transfer_engine PUBLIC ${LEVEL_ZERO_LIBRARY})
 endif()
 
 if(USE_ASCEND)

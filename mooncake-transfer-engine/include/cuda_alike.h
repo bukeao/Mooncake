@@ -17,6 +17,8 @@
 #include "gpu_vendor/supa.h"
 #elif defined(USE_SUNRISE)
 #include "gpu_vendor/sunrise.h"
+#elif defined(USE_XPU)
+#include "gpu_vendor/xpu.h"
 #elif defined(USE_HYGON)
 #include <cuda.h>
 #include <cuda_runtime.h>
@@ -27,7 +29,7 @@
 
 #if !defined(USE_HIP) && !defined(USE_MUSA) && !defined(USE_MLU) &&         \
     !defined(USE_UBSHMEM) && !defined(USE_MACA) && !defined(USE_SUNRISE) && \
-    !defined(USE_SUPA)
+    !defined(USE_SUPA) && !defined(USE_XPU)
 #include <string>
 const static std::string GPU_PREFIX = "cuda:";
 #endif

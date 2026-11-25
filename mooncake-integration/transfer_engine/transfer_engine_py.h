@@ -14,6 +14,7 @@
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
+#include <pybind11/numpy.h>
 #include <pybind11/pybind11.h>
 #include <sys/time.h>
 
@@ -95,6 +96,19 @@ class TransferEnginePy {
                               std::vector<uintptr_t> peer_buffer_addresses,
                               std::vector<size_t> lengths,
                               const std::string &transport_hint = "");
+
+    // Page-gathered batch WRITE of a pages x fields grid. Each row of the
+    // int64 [F, 5] `fields` table is (src_base, src_stride, dst_base,
+    // dst_stride, length); descriptor (f, i) copies `length` bytes from
+    // src_base + src_pages[i] * src_stride to dst_base + dst_pages[i] *
+    // dst_stride. Descriptors are expanded field-major and submitted in
+    // batches of at most `max_batch_size`. Returns 0 on success.
+    int batchTransferSyncWritePages(
+        const char *target_hostname,
+        pybind11::array_t<int64_t, pybind11::array::c_style> src_pages,
+        pybind11::array_t<int64_t, pybind11::array::c_style> dst_pages,
+        pybind11::array_t<int64_t, pybind11::array::c_style> fields,
+        size_t max_batch_size);
 
     batch_id_t batchTransferAsyncWrite(
         const char *target_hostname, const std::vector<uintptr_t> &buffers,
